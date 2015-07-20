@@ -58,12 +58,12 @@ sub try_admin {
       chop($url);
     }
 
-
+    my @extensions = (".php" , ".asp" , ".aspx" , ".jsp" , ".html");
     my @admin_url = (
                   "/admin",
-                  "/administration" ,
-                  "/admin_panel" ,
-                  "/adminpanel" ,
+                  "/administration",
+                  "/admin_panel",
+                  "/adminpanel",
                   "/administrator",
                   "/admin_url",
                   "/admin-login",
@@ -88,6 +88,7 @@ sub try_admin {
                   );
 
     foreach (@admin_url) {
+
       my $try = "$url$_";
       my $alt = "$url:$alt_port$_";
 
@@ -104,13 +105,20 @@ sub try_admin {
       $alt_req->header( Autorization => "Basic $token" );
 
       #on demarre la requête
-      my $res = $ua->request($req);
-      print "$res\n";
+      print "*[CHECK] Tentative avec l'url $try\n";
+      my $response = $ua->request($req);
+
+      #print "*[CHECK] Tentative avec l'url $alt\n";
       #my $alt_res = $ua->request($alt_req);
       #print $alt_res."\n";
 
-      print "[CHECK] Tentative avec l'url $try\n";
-      print "[CHECK] Tentative avec l'url $alt\n";
+      if ($response->is_success) {
+        #print $response->decoded_content;-->réponse de la requête, affiche le code source de la page html, étudier son contenu
+
+      } else {
+        print STDERR $response->get_status;
+      }
+
     }
 
   } else {
