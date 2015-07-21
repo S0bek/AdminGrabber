@@ -5,7 +5,6 @@ use strict;
 use Getopt::Std;#module utilisé pour la gestion des arguments
 use LWP::UserAgent;#requêtes http
 use MIME::Base64;#envoi des données user et password sous forme encodée pour http
-#use Crypt::SSLeay;#permettre la gestion de http over ssl
 
 #gestion des paramètres
 my %opts = ();#hash qui contiendra les paramètres du programme
@@ -49,16 +48,16 @@ sub log_results {
 sub try_admin {
 
   my ($url , $base) = ($opts{s} , "");
-  my $alt_port = 8080;
+  #my $alt_port = 8080;#recherche future avec d'autres ports standards
 
   if ($url =~ m/\/\//) {
 
     #suppression du dernier "/" si celui-ci est présent dans l'url donnée
-    if($url =~ /\/$/) {
-      chop($url);
-    }
+    if($url =~ /\/$/) { chop($url); }
 
-    my @extensions = (".php" , ".asp" , ".aspx" , ".jsp" , ".html");
+    my @target_url;#tableau contenant toutes les URL a tester
+    my @extensions = qw (.php .asp .aspx .jsp .html);
+    my @wordpress_url = ("/wp-admin" , "/wp-login");
     my @admin_url = (
                   "/admin",
                   "/administration",
@@ -71,8 +70,6 @@ sub try_admin {
                   "/admin-panel",
                   "/administration_panel",
                   "/administration-panel",
-                  "/adm",
-                  "/adm_url",
                   "/admin_login",
                   "/login",
                   "/login_panel",
@@ -81,42 +78,70 @@ sub try_admin {
                   "/auth",
                   "/auth-login",
                   "/auth_login",
-                  "/authentication",
-                  #wordpress url
-                  "/wp-admin",
-                  "/wp-login"
+                  "/authentication"
                   );
 
-    foreach (@admin_url) {
+    print "*Mise a jour des url de recherche...\n";
+
+    my $len = @admin_url;
+    my $len_ = @extensions;
+    my $var;
+    my $var_;
+
+    #@target_url = @admin_url;
+
+    for ($var = 0; $var < $len; $var++) {
+      for ($var_ = 0; $var_ < $len_; $var_++) {
+        my $extended_url = "$admin_url[$var]$extensions[$var_]";
+        #print "$extended_url\n";
+        push(@target_url , $extended_url);
+      }
+    }
+
+    push(@target_url , @wordpress_url);
+    print "*Debut de l'analyse sur l'url donnee...\n";
+
+    #requête pour chaque url cible
+    foreach (@target_url) {
 
       my $try = "$url$_";
-      my $alt = "$url:$alt_port$_";
 
-      #on initialise la requête
       #preparation de la requête avec le UserAgent
       my $ua = LWP::UserAgent->new();
-
       my $req = HTTP::Request->new( GET => $try );
-      my $alt_req = HTTP::Request->new( GET => $alt );
 
-      #gestion des token d'authentification
+      #gestion des token d'authentification si une demande d'authentification est initialisee
       my $token = encode_base64($credentials);
       $req->header( Autorization => "Basic $token" );
-      $alt_req->header( Autorization => "Basic $token" );
 
       #on demarre la requête
       print "*[CHECK] Tentative avec l'url $try\n";
       my $response = $ua->request($req);
 
-      #print "*[CHECK] Tentative avec l'url $alt\n";
-      #my $alt_res = $ua->request($alt_req);
-      #print $alt_res."\n";
-
       if ($response->is_success) {
-        #print $response->decoded_content;-->réponse de la requête, affiche le code source de la page html, étudier son contenu
+
+        my $page = $response->decoded_content;#réponse de la requête, affiche le code source de la page html
+        my @target_keyword = ("[aA]dmin" , "[lL]ogin :" , "[pP]assword" , "authentication" , "administration" , "Index\ of");
+
+        #recherche des mots clés
+        for (@target_keyword) {
+
+          if ($page =~ /$_/) {
+
+            my $log = "*Page admin trouvee a l'emplacement suivant: $try!\n";
+            print "$log";
+
+            if ($opt == 2) {
+              log_results($log);
+            }
+
+            return 0;
+          }
+
+        }
 
       } else {
-        print STDERR $response->get_status;
+        print STDERR $response->message."\n";
       }
 
     }
@@ -126,12 +151,7 @@ sub try_admin {
     die "$usage";
   }
 
-  #my @admin_url = ("http://");
 }
 
-if ($opt == 2) {
-  try_admin();
-  #log_results("tested\n");
-} else {
-  try_admin();
-}
+try_admin();
+print "Fin de la recherche\n";
