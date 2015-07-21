@@ -37,7 +37,7 @@ sub log_results {
 
   if ($opt == 2) {
 
-    open(RESULT , ">" , "$opts{f}") or die "Impossible d'ouvrir le fichier $opts{f} pour ecriture: $!\n";
+    open(RESULT , ">>" , "$opts{f}") or die "Impossible d'ouvrir le fichier $opts{f} pour ecriture: $!\n";
     print RESULT $result;
     close(RESULT);
 
@@ -60,8 +60,14 @@ sub try_admin {
     my @wordpress_url = ("/wp-admin" , "/wp-login");
     my @admin_url = (
                   "/admin",
+                  "/admin/admin",
+                  "/auth/admin",
                   "/administration",
+                  "/admin/administration",
+                  "/login/administration",
                   "/admin_panel",
+                  "/admin/admin_panel",
+                  "/login/admin_panel",
                   "/adminpanel",
                   "/administrator",
                   "/admin_url",
@@ -72,12 +78,21 @@ sub try_admin {
                   "/administration-panel",
                   "/admin_login",
                   "/login",
+                  "/admin/login",
+                  "/login/login",
+                  "/auth/login",
                   "/login_panel",
+                  "/admin/login_panel",
+                  "/login/login_panel",
                   "/login-panel",
-                  "/administrator_panel",
+                  "/admin/login-panel",
+                  "/login/login-panel",
                   "/auth",
                   "/auth-login",
                   "/auth_login",
+                  "/admin/auth_login",
+                  "/login/auth_login",
+                  "/auth/auth_login",
                   "/authentication"
                   );
 
@@ -88,7 +103,8 @@ sub try_admin {
     my $var;
     my $var_;
 
-    #@target_url = @admin_url;
+    #decommenter pour prendre en compte la possibilite d'une redirection automatique
+    @target_url = @admin_url;
 
     for ($var = 0; $var < $len; $var++) {
       for ($var_ = 0; $var_ < $len_; $var_++) {
@@ -131,9 +147,7 @@ sub try_admin {
             my $log = "*Page admin trouvee a l'emplacement suivant: $try!\n";
             print "$log";
 
-            if ($opt == 2) {
-              log_results($log);
-            }
+            log_results($log);
 
             return 0;
           }
@@ -141,7 +155,15 @@ sub try_admin {
         }
 
       } else {
-        print STDERR $response->message."\n";
+        #print STDERR $response->message."\n";
+        my $status = $response->message;
+
+        if ($status =~ /Forbidden/) {
+          my $log = "*Le site indique \"$status\", une page d'administration doit bien exister a cet emplacement ($try)\n";
+          print "$log";
+          log_results($log);
+        }
+
       }
 
     }
