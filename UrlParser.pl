@@ -43,6 +43,8 @@ sub log_results {
 
   }
 
+  print "$result";
+
 }
 
 sub try_admin {
@@ -62,6 +64,10 @@ sub try_admin {
                   "/admin",
                   "/admin/admin",
                   "/auth/admin",
+                  "/login",
+                  "/admin/login",
+                  "/login/login",
+                  "/auth/login",
                   "/administration",
                   "/admin/administration",
                   "/login/administration",
@@ -77,10 +83,6 @@ sub try_admin {
                   "/administration_panel",
                   "/administration-panel",
                   "/admin_login",
-                  "/login",
-                  "/admin/login",
-                  "/login/login",
-                  "/auth/login",
                   "/login_panel",
                   "/admin/login_panel",
                   "/login/login_panel",
@@ -104,16 +106,16 @@ sub try_admin {
     my $var_;
 
     #decommenter pour prendre en compte la possibilite d'une redirection automatique
-    @target_url = @admin_url;
+    #@target_url = @admin_url;
 
     for ($var = 0; $var < $len; $var++) {
       for ($var_ = 0; $var_ < $len_; $var_++) {
         my $extended_url = "$admin_url[$var]$extensions[$var_]";
-        #print "$extended_url\n";
         push(@target_url , $extended_url);
       }
     }
 
+    #url pour tester aussi ce qu'il y a de plus commun concernant wordpress
     push(@target_url , @wordpress_url);
     print "*Debut de l'analyse sur l'url donnee...\n";
 
@@ -134,34 +136,47 @@ sub try_admin {
       print "*[CHECK] Tentative avec l'url $try\n";
       my $response = $ua->request($req);
 
-      if ($response->is_success) {
+      #prevention contre les eventuelles redirections
+      my $redirection_status = 0;
+      if (defined $response->previous) {
+        my $location = $response->previous->header( 'Location' );
+        $redirection_status = 1;
+      }
 
-        my $page = $response->decoded_content;#réponse de la requête, affiche le code source de la page html
-        my @target_keyword = ("[aA]dmin" , "[lL]ogin :" , "[pP]assword" , "authentication" , "administration" , "Index\ of");
+      #my $domain = join("" , (split("www." , $url))[1]);
 
-        #recherche des mots clés
-        for (@target_keyword) {
+      if ($redirection_status == 0) {
 
-          if ($page =~ /$_/) {
+        if ($response->is_success) {
 
-            my $log = "*Page admin trouvee a l'emplacement suivant: $try!\n";
-            print "$log";
+          my $page = $response->decoded_content;#réponse de la requête, affiche le code source de la page html
+          #my @target_keyword = ("[aA]dmin" , "[lL]ogin :" , "[pP]assword" , "authentication" , "administration" , "Index\ of");
+          my @target_keyword = ("Admin" , "Login" , "Password" , "authentication" , "administration");
 
-            log_results($log);
+          #recherche des mots clés
+          my $keyword;
+          foreach $keyword (@target_keyword) {
 
-            return 0;
+            if ($page =~ /$keyword/) {
+
+              my $log = "\t*Page admin trouvee a l'emplacement suivant: $try!\n";
+              log_results($log);
+
+              return 0;
+            }
+
           }
 
-        }
+        } else {
+          #print STDERR $response->message."\n";
+          my $status = $response->message;
 
-      } else {
-        #print STDERR $response->message."\n";
-        my $status = $response->message;
+          if ($status =~ /Forbidden/) {
+            my $log = "*Le site indique \"$status\", une page d'administration peut exister a cet emplacement ($try)\n";
+            print "$log";
+            log_results($log);
+          }
 
-        if ($status =~ /Forbidden/) {
-          my $log = "*Le site indique \"$status\", une page d'administration doit bien exister a cet emplacement ($try)\n";
-          print "$log";
-          log_results($log);
         }
 
       }
