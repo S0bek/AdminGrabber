@@ -17,7 +17,7 @@ my $credentials = "admin:password";
 #utilisation du programme
 sub usage {
 
-  my $usage = "./UrlParser.pl -s http://www.google.com -f results.txt\n-s: url du site cible\n-f (optionnel): fichier de log\n";
+  my $usage = "./AdminGrabber.pl -s http://www.google.com -f results.txt\n-s: url du site cible\n-f (optionnel): fichier de log\n";
   return $usage;
 
 }
