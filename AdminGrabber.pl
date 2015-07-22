@@ -8,7 +8,7 @@ use MIME::Base64;#envoi des données user et password sous forme encodée pour h
 
 #gestion des paramètres
 my %opts = ();#hash qui contiendra les paramètres du programme
-getopt("s:f:" , \%opts);
+getopt("s:f:i:" , \%opts);
 my $opt = 0;
 
 #compte factice pour tenter l'authentification sur le site web donné, la connexion peut aussi être un succès...
@@ -17,14 +17,16 @@ my $credentials = "admin:password";
 #utilisation du programme
 sub usage {
 
-  my $usage = "./AdminGrabber.pl -s http://www.google.com -f results.txt\n-s: url du site cible\n-f (optionnel): fichier de log\n";
+  my $usage = "./AdminGrabber.pl -s http://www.google.com -f results.txt\n-s: url du site cible\n-f (optionnel): fichier de log\n-i (optionnel): fichier contenant des url a tester\n";
   return $usage;
 
 }
 
-if (defined($opts{s}) and defined($opts{f})) {
+if (defined($opts{i}) and defined($opts{s}) and defined($opts{f})) {
+  $opt = 3;
+} elsif (defined($opts{s}) and defined($opts{f}) and !defined($opts{i})) {
   $opt = 2;
-} elsif (defined($opts{s})) {
+} elsif (defined($opts{s}) and !defined($opts{f})) {
   $opt = 1;
 } else {
   my $usage = usage();
@@ -35,7 +37,7 @@ sub log_results {
 
   my ($result) = @_;
 
-  if ($opt == 2) {
+  if ($opt == 2 or $opt == 3) {
 
     open(RESULT , ">>" , "$opts{f}") or die "Impossible d'ouvrir le fichier $opts{f} pour ecriture: $!\n";
     print RESULT $result;
@@ -44,6 +46,36 @@ sub log_results {
   }
 
   print "$result";
+
+}
+
+#nouvelle fonction qui permettra de d'injecter les nouvelles url contenues dans le fichier fourni en paramètre -i
+sub inject_url {
+
+  my @inject;
+
+  if (defined($opts{i})) {
+
+    if (-e "$opts{i}") {
+
+      open(URLIST , "<" , $opts{i}) or die "Impossible d'ouvrir le fichier $opts{i} pour lecture: $!\n";
+      while(<URLIST>){
+        chomp($_) ;
+        if ($_ =~ /(\/)+/) {
+          my $line = "$_\n";
+          push(@inject , $line);
+        }
+      }
+      close(URLIST);
+      print "Valeur du tableau: @inject\n";
+
+    } else {
+      print "*Le fichier $opts{i} n'existe pas\n";
+      exit 0;
+    }
+
+  }
+
 
 }
 
@@ -116,6 +148,11 @@ sub try_admin {
 
     #url pour tester aussi ce qu'il y a de plus commun concernant wordpress
     push(@target_url , @wordpress_url);
+
+    #injection des url fournies en plus
+    inject_url();
+
+
     print "*Debut de l'analyse sur l'url donnee...\n";
 
     #requête pour chaque url cible
