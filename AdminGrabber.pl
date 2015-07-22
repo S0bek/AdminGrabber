@@ -17,8 +17,7 @@ my $credentials = "admin:password";
 #utilisation du programme
 sub usage {
 
-  my $usage = "./AdminGrabber.pl -s http://www.google.com -f results.txt\n-s: url du site cible\n-f (optionnel): fichier de log\n-i (optionnel): fichier contenant des url a tester\n";
-  return $usage;
+  die "$0 -s http://www.google.com -f results.txt\n-s: url du site cible\n-f (optionnel): fichier de log\n-i (optionnel): fichier contenant des url a tester\n";
 
 }
 
@@ -29,8 +28,7 @@ if (defined($opts{i}) and defined($opts{s}) and defined($opts{f})) {
 } elsif (defined($opts{s}) and !defined($opts{f})) {
   $opt = 1;
 } else {
-  my $usage = usage();
-  die "$usage";
+  usage();
 }
 
 sub log_results {
@@ -60,7 +58,7 @@ sub inject_url {
 
       open(URLIST , "<" , $opts{i}) or die "Impossible d'ouvrir le fichier $opts{i} pour lecture: $!\n";
       while(<URLIST>){
-        chomp($_) ;
+        chomp;
         if ($_ =~ /(\/)+/) {
           my $line = "$_\n";
           push(@inject , $line);
@@ -217,8 +215,7 @@ sub try_admin {
     }
 
   } else {
-    my $usage = usage();
-    die "$usage";
+    usage();
   }
 
 }
