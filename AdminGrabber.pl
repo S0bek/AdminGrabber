@@ -5,6 +5,7 @@ use strict;
 use Getopt::Std;#module utilisé pour la gestion des arguments
 use LWP::UserAgent;#requêtes http
 use MIME::Base64;#envoi des données user et password sous forme encodée pour http
+use Term::ANSIColor;#gestion des couleurs de sortie
 
 #gestion des paramètres
 my %opts = ();#hash qui contiendra les paramètres du programme
@@ -230,6 +231,8 @@ sub try_admin {
 
       if ($redirection_status == 0) {
 
+        my $loop = 1;
+
         if ($response->is_success) {
 
           my $page = $response->decoded_content;#réponse de la requête, affiche le code source de la page html
@@ -239,10 +242,14 @@ sub try_admin {
           my $keyword;
           foreach $keyword (@target_keyword) {
 
-            if ($page =~ /$keyword/) {
+            if ($page =~ /$keyword/ and $loop == 1) {
 
               my $log = "\t*Page admin potentielle trouvee a l'emplacement suivant: $try.\n";
+              print color 'green';
               log_results($log);
+              print color 'reset';
+
+              $loop++;
 
               #decommenter pour mettre fin a la recherche si on ne veut garder qu'un seul resultat
               #return 0;
@@ -252,12 +259,15 @@ sub try_admin {
 
         } else {
           #print STDERR $response->message."\n";
+          $loop = 1;
           my $status = $response->message;
 
-          if ($status =~ /Forbidden/) {
+          if ($status =~ /Forbidden/ and $loop == 1) {
             my $log = "*Le site indique \"$status\", une page eventuelle d'administration peut exister a cet emplacement ($try)\n";
-            print "$log";
+            print color 'yellow';
             log_results($log);
+            print color 'reset';
+            $loop++;
           }
 
         }
