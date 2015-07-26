@@ -47,7 +47,7 @@ sub log_results {
 
 }
 
-#nouvelle fonction qui permettra de d'injecter les nouvelles url contenues dans le fichier fourni en paramètre -i
+#nouvelle fonction qui permettra d'injecter les nouvelles url contenues dans le fichier fourni en paramètre -i
 sub inject_url {
 
   my @inject;
@@ -57,15 +57,36 @@ sub inject_url {
     if (-e "$opts{i}") {
 
       open(URLIST , "<" , $opts{i}) or die "Impossible d'ouvrir le fichier $opts{i} pour lecture: $!\n";
-      while(<URLIST>){
+      while(<URLIST>) {
+
         chomp;
-        if ($_ =~ /(\/)+/) {
-          my $line = "$_\n";
+        $_ = join("" , (split(" " , $_))[0]);
+        my $line;
+
+        if (/\/$/) { chop($_); }
+
+        if (/(\/)+/) {
+
+          if (m!^\/!) {
+            $line = "$_";
+          } else {
+            $line = "/$_";
+          }
+
           push(@inject , $line);
+
+        } else {
+
+          if(/.(php|html|asp|aspx|jsp|htm)/){#omission de \%EXT\%
+            $line = "/$_";
+            push(@inject , $line);
+          }
+
         }
+
       }
+
       close(URLIST);
-      print "Valeur du tableau: @inject\n";
 
     } else {
       print "*Le fichier $opts{i} n'existe pas\n";
@@ -74,6 +95,7 @@ sub inject_url {
 
   }
 
+  return @inject;
 
 }
 
@@ -88,7 +110,7 @@ sub try_admin {
     if($url =~ /\/$/) { chop($url); }
 
     my @target_url;#tableau contenant toutes les URL a tester
-    my @extensions = qw (.php .asp .aspx .jsp .html);
+    my @extensions = qw (.php .asp .aspx .jsp .html .htm);
     my @wordpress_url = ("/wp-admin" , "/wp-login");
     my @admin_url = (
                   "/admin",
@@ -110,6 +132,8 @@ sub try_admin {
                   "/admin-login",
                   "/admin-url",
                   "/admin-panel",
+                  "/admin_panel",
+                  "/adminpanel",
                   "/administration_panel",
                   "/administration-panel",
                   "/admin_login",
@@ -148,8 +172,35 @@ sub try_admin {
     push(@target_url , @wordpress_url);
 
     #injection des url fournies en plus
-    inject_url();
+    my @opt_url = inject_url();
 
+    if (@opt_url != 0) {
+
+      print "*Rajout des url fournies au programme\n";
+
+      $len = @target_url;
+      $len_ = @opt_url;
+      my $var;
+      my $var_;
+
+      for ($var_ = 0; $var_ < $len_; $var_++) {
+
+        for ($var = 0; $var < $len; $var++) {
+
+          if (defined $opt_url[$var_]) {
+
+            my $added_url = $opt_url[$var_];
+            if ($added_url eq $target_url[$var]){
+              splice(@opt_url , $var_ , 1);
+            }
+
+          }
+
+        }
+
+      }
+      push(@target_url , @opt_url);
+    }
 
     print "*Debut de l'analyse sur l'url donnee...\n";
 
@@ -193,7 +244,8 @@ sub try_admin {
               my $log = "\t*Page admin potentielle trouvee a l'emplacement suivant: $try.\n";
               log_results($log);
 
-              return 0;
+              #decommenter pour mettre fin a la recherche si on ne veut garder qu'un seul resultat
+              #return 0;
             }
 
           }
